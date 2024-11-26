@@ -1,0 +1,2673 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "POMA API",
+    "description": "\nAPI for the [POLYPOINT](www.polypoint.ch) pool management (POMA)\n\n## general remarks\n\n### roles\n\n| name | description |\n| ---  | -- |\n| ADMIN, OPERATIONS   | can manage Tenants |\n| POOL_MANAGER        | can manage Pools and their HealthProfessionals |\n| SHIFT_PLANNER       | can book HealthProfessionals from pools |\n| HEALTH_PROFESSIONAL | can manage her availabilities |\n\n### access restrictions\n\nAt all times, a logged-in user can only see the resources that are\nassociated with the user's tenant. I.e. a PoolManager can only see\nHealthProfessionals in Pools that belong to his Tenant.\n\n### delete operation\n\nThe DELETE operation (HTTP verb) is not permitted for POMA resources that\ncould be referenced in the system.\nResources can be set inactive instead, using the PUT operation.\nExceptions\n* assignments can be deleted by the ShiftPlanner while status is OPEN\n\n### lists\n\nAll GET requests that return lists must respect the params page-size and current-page.\n",
+    "version": "1.0.4",
+    "contact": {
+      "email": "jan.reutimann@polypoint.ch"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://preview-placement-api.polypointservices.ch/api/mobile/health-professional/v1/"
+    }
+  ],
+  "security": [
+    {
+      "OIDC": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Assignments"
+    },
+    {
+      "name": "ResourceReplacement",
+      "description": "endpoint for short-term resource replacement"
+    },
+    {
+      "name": "Opportunities"
+    },
+    {
+      "name": "TemporaryPools"
+    },
+    {
+      "name": "FinalSelection"
+    },
+    {
+      "name": "ShiftTrade"
+    },
+    {
+      "name": "Pools"
+    },
+    {
+      "name": "Availabilities"
+    },
+    {
+      "name": "InternalPools"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Assignments",
+      "tags": [
+        "Assignments"
+      ]
+    },
+    {
+      "name": "POMA",
+      "tags": [
+        "ResourceReplacement",
+        "InternalPools",
+        "Opportunities",
+        "TemporaryPools",
+        "Pools",
+        "Availabilities",
+        "FinalSelection",
+        "ShiftTrade"
+      ]
+    }
+  ],
+  "paths": {
+    "/pools": {
+      "get": {
+        "summary": "getConsumablePools",
+        "description": "get the pools the current ShiftPlanner user can book from",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/externalPools"
+          }
+        ],
+        "tags": [
+          "Pools"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pool"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/availabilities": {
+      "post": {
+        "summary": "queryAvailabilities",
+        "description": "Retrieves the shifts that the HP has marked as available in POMA. No regular planning must happen during these days.\n\nAllowed roles: SHIFT_PLANNER\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromDate"
+          },
+          {
+            "$ref": "#/components/parameters/toDate"
+          }
+        ],
+        "tags": [
+          "Availabilities"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryAvailabilitiesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryAvailabilitiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assignments": {
+      "get": {
+        "summary": "getTenantAssignments",
+        "description": "view tenant's assignments.",
+        "tags": [
+          "Assignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pageSize"
+          },
+          {
+            "$ref": "#/components/parameters/currentPage"
+          },
+          {
+            "$ref": "#/components/parameters/assignmentStatus"
+          },
+          {
+            "$ref": "#/components/parameters/assignmentExpand"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Assignment"
+                  }
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "requested range not satisfiable"
+          }
+        }
+      }
+    },
+    "/assignments/{AssignmentId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/assignmentId"
+        }
+      ],
+      "get": {
+        "summary": "getAssignment",
+        "description": "get single Assignment by id",
+        "tags": [
+          "Assignments"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Assignment"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Assignment not accessible for this user or tenant"
+          },
+          "404": {
+            "description": "Assignment not found"
+          }
+        }
+      }
+    },
+    "/assignments/{AssignmentId}/cancel": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/assignmentId"
+        }
+      ],
+      "put": {
+        "summary": "cancelAssignment",
+        "description": "cancels assignment",
+        "tags": [
+          "Assignments"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "400": {
+            "description": "Assignment can't be cancelled due to validation rules"
+          },
+          "403": {
+            "description": "Assignment not accessible for this user or tenant"
+          },
+          "404": {
+            "description": "Assignment not found"
+          }
+        }
+      }
+    },
+    "/resource-replacement": {
+      "post": {
+        "summary": "createResourceReplacement",
+        "description": "This endpoint is used by PEP to create an resource-replacement opportunity.\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "ResourceReplacement"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceReplacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "headers": {
+              "Location": {
+                "description": "URI for this ResourceReplacement (i.e. \"/api/v1/resource-replacement/4675d9b3-7c82-4763-893b-5ce5cd6a6029\")",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid payload"
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          }
+        }
+      }
+    },
+    "/resource-replacement/{ResourceReplacementId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/resourceReplacementId"
+        }
+      ],
+      "get": {
+        "summary": "fetchResourceReplacement",
+        "description": "get single ResourceReplacement\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "ResourceReplacement"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceReplacementRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          },
+          "404": {
+            "description": "ResourceReplacement not found"
+          }
+        }
+      }
+    },
+    "/opportunities": {
+      "get": {
+        "summary": "fetchOpportunities",
+        "description": "fetch all Opportunities that not older than 30 days for user's tenant.\n\nAllowed roles: SHIFT_PLANNER",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/sortDirection"
+          },
+          {
+            "$ref": "#/components/parameters/opportunityExpand"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "if present limits number of items to return otherwise returns all items.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "tags": [
+          "Opportunities"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Opportunities"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          }
+        }
+      }
+    },
+    "/opportunities/{OpportunityId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/opportunityId"
+        }
+      ],
+      "get": {
+        "summary": "fetchOpportunity",
+        "description": "get single Opportunity\n\nAllowed roles: SHIFT_PLANNER, HEALTH_PROFESSIONAL\n",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/opportunityExpand"
+          }
+        ],
+        "tags": [
+          "Opportunities"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Opportunity"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpportunityForHealthProfessional"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "opportunity not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "cancelOpportunity",
+        "description": "SHIFT_PLANNER cancel an Opportunity; no more responses are allowed, if final selection has been made, user is released.\nHEALTH_PROFESSIONAL cancel a ShiftTrade Opportunity; no submission has been made.\n\nAllowed roles: SHIFT_PLANNER, HEALTH_PROFESSIONAL\n",
+        "tags": [
+          "Opportunities"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER, HEALTH_PROFESSIONAL role required"
+          },
+          "404": {
+            "description": "opportunity not found"
+          },
+          "409": {
+            "description": "conflict - opportunity must be in PENDING, OPEN, SUBMITTED or FINALIZED state - additionally for HEALTH_PROFESSIONAL all shift trades in opportunity must be in PROPOSED state"
+          }
+        }
+      }
+    },
+    "/opportunities/{OpportunityId}/final-selection": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/opportunityId"
+        }
+      ],
+      "get": {
+        "summary": "fetchFinalSelection",
+        "description": "get final selection result\n\nAllowed roles: SHIFT_PLANNER, HEALTH_PROFESSIONAL\n",
+        "tags": [
+          "FinalSelection"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalSelection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER or HEALTH_PROFESSIONAL role required"
+          },
+          "404": {
+            "description": "opportunity not found"
+          },
+          "409": {
+            "description": "conflict - opportunity must be in FINALIZED state"
+          }
+        }
+      }
+    },
+    "/temporary-pools": {
+      "get": {
+        "summary": "fetchTemporaryPools",
+        "description": "fetch all open TemporaryPools for user's tenant.\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "TemporaryPools"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporaryPools"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          }
+        }
+      }
+    },
+    "/temporary-pools/{TemporaryPoolId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/temporaryPoolId"
+        }
+      ],
+      "get": {
+        "summary": "fetchTemporaryPool",
+        "description": "get single TemporaryPool\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "TemporaryPools"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporaryPool"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          },
+          "404": {
+            "description": "temporary pool not found"
+          }
+        }
+      }
+    },
+    "/shift-trades/submitted": {
+      "get": {
+        "summary": "getSubmittedShiftTrades",
+        "description": "get a list of ShiftTrades that the currently logged in ShiftPlanner can approve.\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "ShiftTrade"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmittedShiftTrades"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          }
+        }
+      }
+    },
+    "/shift-trades/submitted/{OpportunityId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/opportunityId"
+        }
+      ],
+      "get": {
+        "summary": "getSubmittedShiftTrade",
+        "description": "get an individual submitted ShiftTrade that the currently logged in ShiftPlanner can approve.\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "ShiftTrade"
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmittedShiftTrade"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          },
+          "404": {
+            "description": "shift-trade/opportunity not found"
+          }
+        }
+      }
+    },
+    "/internal-pool-opportunity": {
+      "post": {
+        "summary": "createOpportunityFromInternalPools",
+        "description": "This endpoint is used by PEP to create an opportunity based on \"internal pools\".\n\nAllowed roles: SHIFT_PLANNER\n",
+        "tags": [
+          "InternalPools"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOpportunityFromPoolsInternalPoolsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "created",
+            "headers": {
+              "Location": {
+                "description": "URI for this Opportunity (i.e. \"/api/v1/opportunities/4675d9b3-7c82-4763-893b-5ce5cd6a6029\")",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOpportunityFromInternalPoolResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid payload"
+          },
+          "401": {
+            "description": "unauthorized - not logged in"
+          },
+          "403": {
+            "description": "forbidden - SHIFT_PLANNER role required"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "OIDC": {
+        "type": "openIdConnect",
+        "openIdConnectUrl": "https://iam.polypointservices.ch/auth/realms/polypoint-poma-realm/.well-known/openid-configuration"
+      }
+    },
+    "parameters": {
+      "pageSize": {
+        "name": "page-size",
+        "description": "number of items displayed on one page. 0 or lower will return all elements (use with care). Default is 50.",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "currentPage": {
+        "name": "current-page",
+        "description": "index of the page that is requested. Starts with 0.",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "fromDate": {
+        "name": "from",
+        "in": "query",
+        "description": "start date (included)",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "toDate": {
+        "name": "to",
+        "in": "query",
+        "description": "end date (included), must not be before \"from\" date",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "assignmentExpand": {
+        "name": "expand",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AssignmentExpand"
+          }
+        }
+      },
+      "externalPools": {
+        "name": "external-pools",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "boolean",
+          "default": false,
+          "example": true
+        }
+      },
+      "assignmentId": {
+        "name": "AssignmentId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "temporaryPoolId": {
+        "name": "TemporaryPoolId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "4675d9b3-7c82-4763-893b-5ce5cd6a6029"
+        }
+      },
+      "opportunityId": {
+        "name": "OpportunityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "4675d9b3-7c82-4763-893b-5ce5cd6a6029"
+        }
+      },
+      "resourceReplacementId": {
+        "name": "ResourceReplacementId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "example": "f0dad2c6-ec0e-43b2-9b79-83aabc282016"
+        }
+      },
+      "assignmentStatus": {
+        "name": "status",
+        "description": "one of OPEN, CONFIRMED, CLOSED",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "CONFIRMED",
+            "CLOSED",
+            "CANCELLED"
+          ]
+        }
+      },
+      "sortDirection": {
+        "name": "sort-direction",
+        "description": "direction in which sort result list",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "$ref": "#/components/schemas/SortDirection"
+        }
+      },
+      "opportunityExpand": {
+        "name": "expand",
+        "description": "array of properties which to expand. Available only for SHIFT_PLANNER role.",
+        "required": false,
+        "in": "query",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/OpportunityExpand"
+          }
+        }
+      }
+    },
+    "schemas": {
+      "CompanyName": {
+        "type": "string",
+        "description": "Name of the company",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "minProperties": 1,
+        "example": {
+          "de": "POLYPOINT AG",
+          "fr": "POLYPOINT SA"
+        }
+      },
+      "Address": {
+        "type": "object",
+        "description": "a generic address",
+        "properties": {
+          "address1": {
+            "type": "string"
+          },
+          "address2": {
+            "type": "string"
+          },
+          "area_code": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "description": "country is derived from country_code.  It is available to simplify display of country_code.\nOn writes it will be ignored in favor of country_code\n",
+            "type": "string"
+          },
+          "country_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "address1",
+          "area_code",
+          "city",
+          "country_code"
+        ],
+        "example": {
+          "address1": "Evergreen Terrace 742",
+          "po_box": 75848,
+          "area_code": 90701,
+          "city": "Springfield",
+          "country_code": "CH"
+        }
+      },
+      "Gender": {
+        "type": "string",
+        "enum": [
+          "MALE",
+          "FEMALE",
+          "OTHER"
+        ]
+      },
+      "Pool": {
+        "type": "object",
+        "allOf": [
+          {
+            "properties": {
+              "$_type": {
+                "type": "string",
+                "default": "PoolDTO"
+              },
+              "id": {
+                "type": "string",
+                "description": "id of pool"
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/PoolData"
+          }
+        ],
+        "required": [
+          "id",
+          "name",
+          "active"
+        ]
+      },
+      "PoolData": {
+        "type": "object",
+        "discriminator": {
+          "propertyName": "$_type",
+          "mapping": {
+            "PoolDTO": "#/components/schemas/Pool"
+          }
+        },
+        "properties": {
+          "$_type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "object",
+            "description": "Identifies the Pool, i.e. \"Nurses\"",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "minProperties": 1
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string",
+            "description": "can be used to indicate the region where the pool members are willing to operate"
+          }
+        },
+        "required": [
+          "name",
+          "active"
+        ]
+      },
+      "NewHealthProfessional": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "title": {
+            "type": "string",
+            "description": "i.e. Dr. med"
+          },
+          "first_name": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "gender": {
+            "$ref": "#/components/schemas/Gender"
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "mobile_number": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "HealthProfessional": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/NewHealthProfessional"
+          },
+          {
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "generated id, URL-compatible"
+              },
+              "active": {
+                "type": "boolean",
+                "description": "must be active to be visible/bookable"
+              },
+              "last_modified": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "active"
+            ]
+          }
+        ]
+      },
+      "ShiftType": {
+        "type": "string",
+        "enum": [
+          "EARLY",
+          "NORMAL",
+          "LATE",
+          "NIGHT"
+        ]
+      },
+      "Shift": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ShiftType"
+          },
+          "start_time": {
+            "type": "time",
+            "description": "string representation of the local time",
+            "example": "06:30"
+          }
+        }
+      },
+      "NewAssignment": {
+        "type": "object",
+        "properties": {
+          "shifts": {
+            "description": "array for future use; currently a single shift is supported",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Shift"
+            }
+          },
+          "notes": {
+            "type": "string",
+            "description": "details about contact, exact times & location, etc."
+          },
+          "health_professional_id": {
+            "type": "string",
+            "description": "POMA user id"
+          },
+          "pool_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shifts",
+          "start_time",
+          "health_professional_id",
+          "pool_id"
+        ]
+      },
+      "AssignmentStatus": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "CONFIRMED",
+          "CLOSED",
+          "CANCELLED"
+        ]
+      },
+      "Assignment": {
+        "type": "object",
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "generated id, URL-compatible"
+              },
+              "status": {
+                "$ref": "#/components/schemas/AssignmentStatus"
+              },
+              "_links": {
+                "type": "object",
+                "description": "Contains the resource links for * HealthProfessional * Pool * ShiftPlanner",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "shift_planner_id": {
+                "type": "string"
+              },
+              "shift_planner_tenant_id": {
+                "type": "string"
+              },
+              "expanded_health_professional": {
+                "$ref": "#/components/schemas/HealthProfessional"
+              },
+              "expanded_tenant": {
+                "$ref": "#/components/schemas/Tenant"
+              },
+              "expanded_pool": {
+                "$ref": "#/components/schemas/PoolData"
+              },
+              "expanded_shift_planner": {
+                "$ref": "#/components/schemas/ShiftPlanner"
+              },
+              "subject_id": {
+                "type": "string",
+                "description": "JWT subject from on-premise keycloak (the local keycloak user id)"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "shift_planner_id",
+              "tenant_id"
+            ]
+          },
+          {
+            "$ref": "#/components/schemas/NewAssignment"
+          }
+        ]
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "$ref": "#/components/schemas/CompanyName"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "test_tenant": {
+            "description": "If true then the tenant is used for testing and thus a lower level of support can be permitted",
+            "type": "boolean",
+            "default": false
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "NewShiftPlanner": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Keycloak username",
+            "format": "email"
+          },
+          "title": {
+            "type": "string",
+            "description": "i.e. Dr. med"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "mobile_number": {
+            "type": "string"
+          },
+          "additional_roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ShiftPlanner": {
+        "type": "object",
+        "allOf": [
+          {
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "generated id, URL-compatible"
+              },
+              "tenant_id": {
+                "type": "string",
+                "description": "link to parent Tenant"
+              },
+              "active": {
+                "type": "boolean",
+                "description": "only an active ShiftPlanner can book HealthProfessionals"
+              }
+            },
+            "required": [
+              "id",
+              "tenant_id",
+              "active"
+            ]
+          },
+          {
+            "$ref": "#/components/schemas/NewShiftPlanner"
+          }
+        ]
+      },
+      "AssignmentExpand": {
+        "description": "one of HEALTH_PROFESSIONAL, TENANT, POOL, SHIFT_PLANNER",
+        "type": "string",
+        "enum": [
+          "HEALTH_PROFESSIONAL",
+          "TENANT",
+          "POOL",
+          "SHIFT_PLANNER"
+        ]
+      },
+      "CreateOpportunityFromPoolsInternalPoolsRequest": {
+        "type": "object",
+        "required": [
+          "shift_request",
+          "pep_service",
+          "pep_roster",
+          "pools"
+        ],
+        "properties": {
+          "shift_request": {
+            "$ref": "#/components/schemas/ShiftRequest"
+          },
+          "pep_service": {
+            "$ref": "#/components/schemas/PepService"
+          },
+          "pep_roster": {
+            "$ref": "#/components/schemas/PepRoster"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "44b0b946-544f-4d6f-9ff5-081f20b2e77f",
+              "44b0b946-544f-4d6f-9ff5-081f20b2e773"
+            ]
+          }
+        }
+      },
+      "CreateOpportunityFromInternalPoolResult": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "ResourceReplacementRequest": {
+        "type": "object",
+        "required": [
+          "shift_request",
+          "pep_service",
+          "pep_roster",
+          "pep_pool"
+        ],
+        "properties": {
+          "shift_request": {
+            "$ref": "#/components/schemas/ShiftRequest"
+          },
+          "pep_service": {
+            "$ref": "#/components/schemas/PepService"
+          },
+          "pep_roster": {
+            "$ref": "#/components/schemas/PepRoster"
+          },
+          "pep_pool": {
+            "$ref": "#/components/schemas/PepPool"
+          }
+        }
+      },
+      "ShiftRequests": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ShiftRequest"
+        }
+      },
+      "ShiftRequest": {
+        "type": "object",
+        "description": "what shift needs to be replaced?",
+        "required": [
+          "start",
+          "end",
+          "shift_type"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO formatted local start time in UTC"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO formatted local end time in UTC"
+          },
+          "shift_type": {
+            "$ref": "#/components/schemas/ShiftType"
+          },
+          "shift_title": {
+            "type": "string",
+            "description": "A human readable name/title for the shift."
+          }
+        },
+        "example": {
+          "start": "2019-06-18T14:30:00.000Z",
+          "end": "2019-06-18T21:00:00.000Z",
+          "shift_type": "LATE",
+          "shift_title": "ICU supervision"
+        }
+      },
+      "PepService": {
+        "type": "object",
+        "description": "information about the originally planned shift",
+        "required": [
+          "code",
+          "position",
+          "title",
+          "icon"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "PA-Code"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PepServicePosition"
+          },
+          "title": {
+            "type": "string"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/PepServiceIcon"
+          }
+        },
+        "example": {
+          "code": 512,
+          "position": "LEFT",
+          "title": "IPS Überwachung",
+          "icon": {
+            "format": "PNG",
+            "data": [
+              "wolQTkcNChoKAAAADUlIRFIAAAAwAAAAMAgGAAAAVwLDucKHAAAAHXRFWHRqaXJhLXN5c3RlbS1p",
+              "bWFnZS10eXBlAGF2YXRhcsOkAhphAAAKA0lEQVR4w5rCtcKZZcKvw5xqDMKET8KZwpnCmVFlblUm",
+              "w5XDrcOtw5vCt8O2w7zDuXN7w7TDqMKRw53CunXDiz93w67DnDk7dsOswpjDrcOewr3DmzZuw5xo",
+              "w7PDp8OPwrfCiRMnw5rDgMKBA8KtTcKbNlbCu3bDrcOoXhUrVsK0SsKVKlnCuXLDpcKswqTCpCRn"
+            ]
+          }
+        }
+      },
+      "PepServiceIcon": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "PNG"
+            ]
+          },
+          "data": {
+            "type": "array",
+            "description": "array of strings (base64 encoded PNG file); should not be bigger than 3KB",
+            "items": {
+              "type": "string",
+              "format": "byte"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "data"
+        ],
+        "example": {
+          "format": "PNG",
+          "data": [
+            "wolQTkcNChoKAAAADUlIRFIAAAAwAAAAMAgGAAAAVwLDucKHAAAAHXRFWHRqaXJhLXN5c3RlbS1p",
+            "bWFnZS10eXBlAGF2YXRhcsOkAhphAAAKA0lEQVR4w5rCtcKZZcKvw5xqDMKET8KZwpnCmVFlblUm",
+            "w5XDrcOtw5vCt8O2w7zDuXN7w7TDqMKRw53CunXDiz93w67DnDk7dsOswpjDrcOewr3DmzZuw5xo",
+            "w7PDp8OPwrfCiRMnw5rDgMKBA8KtTcKbNlbCu3bDrcOoXhUrVsK0SsKVKlnCuXLDpcKswqTCpCRn"
+          ]
+        }
+      },
+      "PepServicePosition": {
+        "type": "string",
+        "enum": [
+          "LEFT",
+          "RIGHT",
+          "FULL",
+          "STANDBY"
+        ]
+      },
+      "PepRoster": {
+        "type": "object",
+        "description": "represents the Planblatt where the pep_shift had been planned",
+        "required": [
+          "id",
+          "name",
+          "path"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the Planblatt"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the Planblatt"
+          },
+          "path": {
+            "type": "string",
+            "description": "Name of Planblatt, including ancestors"
+          }
+        },
+        "example": {
+          "id": "123452",
+          "name": "IPS Gruppe A",
+          "path": "Bereich AA | IPS Gruppe A"
+        }
+      },
+      "PepPool": {
+        "type": "array",
+        "description": "array of collegues that might replace the missing resource",
+        "items": {
+          "$ref": "#/components/schemas/PepEmployee"
+        }
+      },
+      "PepEmployee": {
+        "type": "object",
+        "description": "represents an employee in a temporary pool",
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "description": "customer-provided unique identifier for a persion within the temporary pool",
+            "example": "5684512"
+          },
+          "last_name": {
+            "type": "string",
+            "example": "Sanders"
+          },
+          "first_name": {
+            "type": "string",
+            "example": "Bernie"
+          },
+          "title": {
+            "type": "string",
+            "description": "optional professional title",
+            "example": "Dr. med."
+          },
+          "keycloak_user_id": {
+            "type": "string",
+            "example": "44b0b946-544f-4d6f-9ff5-081f20b2e77f"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "bernie.sanders@hotmail.com"
+          },
+          "planned_assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedAssignment"
+            }
+          }
+        },
+        "required": [
+          "employee_id",
+          "keycloak_user_id"
+        ]
+      },
+      "PlannedAssignment": {
+        "type": "object",
+        "description": "this represents the actual planned shift for the employee on that date",
+        "properties": {
+          "employment_id": {
+            "type": "string",
+            "example": "5684512"
+          },
+          "roster": {
+            "$ref": "#/components/schemas/PepRoster"
+          },
+          "node": {
+            "$ref": "#/components/schemas/PepNode"
+          },
+          "employment_level": {
+            "type": "number",
+            "format": "float",
+            "description": "Beschäftigungsgrad",
+            "example": 80
+          },
+          "flex_time": {
+            "$ref": "#/components/schemas/PepFlexTime"
+          },
+          "services": {
+            "$ref": "#/components/schemas/PositionServiceMap"
+          },
+          "conflicts": {
+            "type": "array",
+            "description": "array of Conflicts for this assignment",
+            "items": {
+              "$ref": "#/components/schemas/Conflict"
+            }
+          },
+          "employment_number": {
+            "type": "string",
+            "example": "01"
+          },
+          "payment_mode": {
+            "type": "string",
+            "enum": [
+              "HOURLY",
+              "MONTHLY"
+            ],
+            "example": "HOURLY"
+          }
+        },
+        "required": [
+          "employment_id",
+          "pep_roster",
+          "pep_node",
+          "employment_level",
+          "flex_time",
+          "services",
+          "conflicts"
+        ]
+      },
+      "PositionServiceMap": {
+        "type": "object",
+        "description": "Map<Position, Service>. Valid keys are: LEFT, RIGHT, FULL, STANDBY",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/PositionServiceMapItem"
+        },
+        "example": {
+          "LEFT": {
+            "code": 512,
+            "title": "IPS Überwachung",
+            "icon": {
+              "format": "PNG",
+              "data": [
+                "wolQTkcNChoKAAAADUlIRFIAAAAwAAAAMAgGAAAAVwLDucKHAAAAHXRFWHRqaXJhLXN5c3RlbS1p",
+                "bWFnZS10eXBlAGF2YXRhcsOkAhphAAAKA0lEQVR4w5rCtcKZZcKvw5xqDMKET8KZwpnCmVFlblUm",
+                "w5XDrcOtw5vCt8O2w7zDuXN7w7TDqMKRw53CunXDiz93w67DnDk7dsOswpjDrcOewr3DmzZuw5xo",
+                "w7PDp8OPwrfCiRMnw5rDgMKBA8KtTcKbNlbCu3bDrcOoXhUrVsK0SsKVKlnCuXLDpcKswqTCpCRn"
+              ]
+            }
+          },
+          "RIGHT": {
+            "code": 714,
+            "title": "IPS Admin",
+            "icon": {
+              "format": "PNG",
+              "data": [
+                "wolQTkcNChoKAAAADUlIRFIAAAAwAAAAMAgGAAAAVwLDucKHAAAAHXRFWHRqaXJhLXN5c3RlbS1p",
+                "bWFnZS10eXBlAGF2YXRhcsOkAhphAAAKA0lEQVR4w5rCtcKZZcKvw5xqDMKET8KZwpnCmVFlblUm",
+                "w5XDrcOtw5vCt8O2w7zDuXN7w7TDqMKRw53CunXDiz93w67DnDk7dsOswpjDrcOewr3DmzZuw5xo",
+                "w7PDp8OPwrfCiRMnw5rDgMKBA8KtTcKbNlbCu3bDrcOoXhUrVsK0SsKVKlnCuXLDpcKswqTCpCRn"
+              ]
+            }
+          }
+        }
+      },
+      "PositionServiceMapItem": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "PA-Code"
+          },
+          "title": {
+            "type": "string"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/PepServiceIcon"
+          }
+        }
+      },
+      "Conflict": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "HINT",
+              "WARNING",
+              "FORBIDDEN"
+            ],
+            "example": "WARNING"
+          },
+          "category": {
+            "type": "string",
+            "example": "WORKING_TIME"
+          },
+          "rule": {
+            "type": "string",
+            "description": "name of the offended rule",
+            "example": "MZ_3MO_BELG"
+          },
+          "message": {
+            "$ref": "#/components/schemas/ConflictMessage"
+          },
+          "description": {
+            "$ref": "#/components/schemas/ConflictMessage"
+          }
+        },
+        "required": [
+          "severity",
+          "category",
+          "rule",
+          "message",
+          "description"
+        ]
+      },
+      "ConflictMessage": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "example": {
+          "de-CH": "Monatsarbeitszeit um 3.45h überschritten",
+          "en-US": "exceeds monthly limit by 3.45h",
+          "fr-CH": "quelque chose",
+          "it-CH": "que bella"
+        }
+      },
+      "PepFlexTime": {
+        "type": "object",
+        "description": "represents GLAZ",
+        "required": [
+          "balance",
+          "formatted"
+        ],
+        "properties": {
+          "balance": {
+            "type": "number",
+            "format": "int64",
+            "description": "flex time balance, in seconds",
+            "example": 6854
+          },
+          "formatted": {
+            "type": "string",
+            "description": "formatted string to display flex time",
+            "example": "02:35"
+          }
+        }
+      },
+      "PepNode": {
+        "type": "object",
+        "description": "represents a PEP Knoten",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "id": "123452",
+          "name": "IPS Gruppe A"
+        }
+      },
+      "ResourceReplacementResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "link to webapp page of newly created resource-replacement-opportunity",
+            "example": "https://placement.polypointservices.ch/resource-replacements/4675d9b3-7c82-4763-893b-5ce5cd6a6029"
+          }
+        }
+      },
+      "Opportunities": {
+        "type": "object",
+        "properties": {
+          "opportunities": {
+            "type": "array",
+            "description": "(possibly empty) list of opportunities",
+            "items": {
+              "$ref": "#/components/schemas/Opportunity"
+            }
+          }
+        }
+      },
+      "Opportunity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "dec8e69c-5ccf-490d-a770-ce4156fd7f41",
+            "description": "generated id, URL-compatible"
+          },
+          "shift_requests": {
+            "$ref": "#/components/schemas/ShiftRequests"
+          },
+          "pools": {
+            "$ref": "#/components/schemas/OpportunityPools"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "ShiftPlanner's id",
+            "example": "8ed64bbb-219e-4e41-93f1-7dc03dde047c"
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "ShiftPlanner's tenant",
+            "example": "51cb50f2-f49e-41f7-ac73-85044399c584"
+          },
+          "state": {
+            "$ref": "#/components/schemas/OpportunityState"
+          },
+          "type": {
+            "type": "string",
+            "description": "currently only type RESOURCE_REPLACEMENT is allowed",
+            "enum": [
+              "RESOURCE_REPLACEMENT",
+              "SHIFT_TRADE",
+              "INTERNAL_POOLS_OPPORTUNITY"
+            ]
+          },
+          "details": {
+            "$ref": "#/components/schemas/OpportunityDetails"
+          },
+          "applications": {
+            "$ref": "#/components/schemas/Applications"
+          },
+          "active_participants": {
+            "$ref": "#/components/schemas/ActiveParticipants"
+          },
+          "shift_trade_requests": {
+            "description": "candidates for trading shifts in the SHIFT_TRADE case",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftTradeRequest"
+            }
+          },
+          "shift_trade_shift": {
+            "$ref": "#/components/schemas/PlannedShift"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "tenant_id",
+          "shift_requests",
+          "pools",
+          "state",
+          "details"
+        ]
+      },
+      "OpportunityDetails": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ResourceReplacementDetails"
+          },
+          {
+            "$ref": "#/components/schemas/ShiftTradeDetails"
+          }
+        ]
+      },
+      "ShiftTradeRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "opportunity_id": {
+            "type": "string"
+          },
+          "temporary_pool_member_id": {
+            "type": "string"
+          },
+          "health_professional_id": {
+            "type": "string"
+          },
+          "shift": {
+            "$ref": "#/components/schemas/PlannedShift"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Conflict"
+            }
+          },
+          "approvers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Approver"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROPOSED",
+              "SUBMITTED",
+              "APPROVED",
+              "DENIED",
+              "UNDEFINED"
+            ]
+          },
+          "status_message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "opportunity_id",
+          "temporary_pool_member_id",
+          "health_professional_id",
+          "shift",
+          "status"
+        ]
+      },
+      "PlannedShift": {
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "shift_type",
+          "code",
+          "title",
+          "shift_planning_id",
+          "roster_cell_id"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO formatted local start time in UTC"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO formatted local end time in UTC"
+          },
+          "shift_type": {
+            "$ref": "#/components/schemas/ShiftType"
+          },
+          "code": {
+            "type": "string",
+            "description": "identifies shift definition, and shift icon"
+          },
+          "shift_position": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "RIGHT",
+              "FULL",
+              "ON_CALL"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "title of the shift"
+          },
+          "shift_planning_id": {
+            "type": "string"
+          },
+          "roster_cell_id": {
+            "type": "string"
+          },
+          "department_display_name": {
+            "type": "string"
+          }
+        },
+        "example": {
+          "start": "2019-06-18T14:30:00.000Z",
+          "end": "2019-06-18T21:00:00.000Z",
+          "shift_type": "LATE",
+          "code": "512",
+          "title": "ICU supervision",
+          "shift_planning_id": "8756456673",
+          "roster_cell_id": "55aadb4d-07ae-4f70-9339-a181504663b9",
+          "department_display_name": "Intensive care unit"
+        }
+      },
+      "Approver": {
+        "type": "object",
+        "properties": {
+          "tenant_user_id": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_user_id"
+        ]
+      },
+      "ResourceReplacementDetails": {
+        "type": "object",
+        "properties": {
+          "resource_replacement_id": {
+            "type": "string",
+            "description": "id of resource_replacement",
+            "example": "617dab88-19ad-4209-96f2-d37f5439cb36"
+          },
+          "resource_replacement_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "direct link to resource_replacement_request",
+            "example": "/api/v1/resource-replacement/617dab88-19ad-4209-96f2-d37f5439cb36"
+          }
+        }
+      },
+      "ShiftTradeDetails": {
+        "type": "object",
+        "properties": {
+          "shift_planning_id": {
+            "type": "string",
+            "description": "id from PEP",
+            "example": "45638512"
+          },
+          "roster_cell_id": {
+            "type": "string",
+            "format": "uri",
+            "example": "317dab88-19ad-4209-96f2-d37f5439cb36"
+          }
+        }
+      },
+      "OpportunityState": {
+        "type": "string",
+        "enum": [
+          "UNDEFINED",
+          "PENDING",
+          "OPEN",
+          "SUBMITTED",
+          "CANCELLED",
+          "FINALIZED",
+          "EXPIRED",
+          "INITIALIZING"
+        ]
+      },
+      "OpportunityMode": {
+        "type": "string",
+        "enum": [
+          "NORMAL",
+          "FIFO"
+        ]
+      },
+      "OpportunityPools": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OpportunityPool"
+        }
+      },
+      "OpportunityPool": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "defines the type of pool (POMA / PEP)",
+            "enum": [
+              "POMA_POOL",
+              "TEMPORARY_POOL",
+              "POMA_POOL_VIEW"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "internal pool id",
+            "example": "617dab88-19ad-4209-96f2-d37f5439cb36"
+          },
+          "uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "relative link to pool",
+            "example": "/api/v1/temporary-pools/617dab88-19ad-4209-96f2-d37f5439cb36"
+          },
+          "name": {
+            "type": "object",
+            "description": "(translated) name of pool",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ]
+      },
+      "OpportunityForHealthProfessional": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "dec8e69c-5ccf-490d-a770-ce4156fd7f41"
+          },
+          "state": {
+            "$ref": "#/components/schemas/OpportunityState"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/OpportunityMode"
+          },
+          "shift_requests": {
+            "$ref": "#/components/schemas/ShiftRequests"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "tenant_name": {
+            "$ref": "#/components/schemas/CompanyName"
+          },
+          "tenant_department": {
+            "type": "string"
+          },
+          "function": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/Contact"
+          },
+          "application": {
+            "$ref": "#/components/schemas/Application"
+          },
+          "shift_trade_request": {
+            "$ref": "#/components/schemas/ShiftTradeRequest"
+          },
+          "shift_trade_shift": {
+            "$ref": "#/components/schemas/PlannedShift"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "shift_requests",
+          "tenant_id"
+        ]
+      },
+      "Contact": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone_number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "TemporaryPools": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TemporaryPool"
+        }
+      },
+      "TemporaryPool": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemporaryPoolMember"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "members"
+        ]
+      },
+      "PlanningConflictMessage": {
+        "type": "string",
+        "description": "Planning conflict message",
+        "additionalProperties": {
+          "type": "string"
+        },
+        "minProperties": 1,
+        "example": {
+          "de": "Monatsarbeitszeit um 3.45h überschritten",
+          "en": "exeeds monthly limit by 3.45h"
+        }
+      },
+      "PlanningConflict": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "HINT",
+              "WARNING",
+              "FORBIDDEN"
+            ],
+            "example": "WARNING"
+          },
+          "message": {
+            "$ref": "#/components/schemas/PlanningConflictMessage"
+          }
+        },
+        "required": [
+          "severity",
+          "message"
+        ]
+      },
+      "TemporaryPoolMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "internal id",
+            "example": "c51c138a-ac0f-421f-9e3e-5c97d73498d4"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "id given by keycloak",
+            "example": "fdda613e-92d0-4fbb-961b-31a4556d0913"
+          },
+          "employee_id": {
+            "type": "string",
+            "description": "customer-provided unique identifier for a persion within the temporary pool",
+            "example": "5684512"
+          },
+          "last_name": {
+            "type": "string",
+            "example": "Sanders"
+          },
+          "first_name": {
+            "type": "string",
+            "example": "Bernie"
+          },
+          "title": {
+            "type": "string",
+            "description": "optional professional title",
+            "example": "Dr. med."
+          },
+          "mobile_number": {
+            "type": "string",
+            "format": "mobile_number",
+            "example": "+41795247556"
+          },
+          "is_mobile_app_user": {
+            "type": "boolean",
+            "description": "If true then the user is logged into the mobileApp"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "bernie.sanders@hotmail.com"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "whether this pool member is being considered for a request",
+            "example": true
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "whether this pool member is locked by another request",
+            "example": false
+          },
+          "birth_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "conflicts": {
+            "type": "array",
+            "description": "array of planning conflicts",
+            "items": {
+              "$ref": "#/components/schemas/PlanningConflict"
+            }
+          },
+          "opportunity_metrics": {
+            "$ref": "#/components/schemas/OpportunityMetrics"
+          }
+        },
+        "required": [
+          "user_id",
+          "employee_id",
+          "active"
+        ]
+      },
+      "OpportunityMetrics": {
+        "type": "object",
+        "description": "calculated metrics",
+        "properties": {
+          "total_requests_count": {
+            "type": "integer",
+            "description": "total number of opportunity requests received"
+          },
+          "applied_count": {
+            "type": "integer",
+            "description": "number of positive responses"
+          },
+          "declined_count": {
+            "type": "integer",
+            "description": "number of negative responses"
+          }
+        },
+        "example": {
+          "total_requests_count": 10,
+          "applied_count": 2,
+          "rejected_count": 3
+        },
+        "required": [
+          "total_requests_count",
+          "applied_count",
+          "rejected_count"
+        ]
+      },
+      "FinalSelection": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "id of the selected health professional",
+            "example": "4176f46e-b77d-4323-aa3a-60e6887ad282"
+          },
+          "pool_id": {
+            "type": "string",
+            "description": "id of pool",
+            "example": "012462de-44a6-4071-98db-99741f7402fe"
+          },
+          "pool_type": {
+            "type": "string",
+            "description": "defines the type of pool (POMA / PEP)",
+            "enum": [
+              "POMA_POOL",
+              "TEMPORARY_POOL",
+              "POMA_POOL_VIEW"
+            ],
+            "example": "TEMPORARY_POOL"
+          },
+          "employee_id": {
+            "type": "string",
+            "description": "customer provided id of chosen temporary pool member. Only available if pool_type is TEMPORARY_POOL",
+            "example": "15234"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "name of the chosen one",
+            "example": "Sanders"
+          },
+          "first_name": {
+            "type": "string",
+            "description": "first name of the chosen one",
+            "example": "Bernie"
+          },
+          "title": {
+            "type": "string",
+            "description": "title of the chosen one",
+            "example": "Dr. med."
+          }
+        },
+        "required": [
+          "user_id",
+          "pool_id",
+          "pool_type"
+        ]
+      },
+      "Applications": {
+        "type": "object",
+        "properties": {
+          "applications": {
+            "type": "array",
+            "description": "(possibly empty) list of applications",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationInfo"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "requests_sent": {
+                "type": "integer",
+                "description": "number of HealthProfessionals that have received a request",
+                "example": 12
+              },
+              "applications_received": {
+                "type": "integer",
+                "description": "number of HealthProfessionals that have responded to the request",
+                "example": 4
+              },
+              "applications_pending": {
+                "type": "integer",
+                "description": "number of HealthProfessionals that have not yet responded to the request",
+                "example": 8
+              },
+              "yes_count": {
+                "type": "integer",
+                "description": "number of positive applications",
+                "example": 0
+              },
+              "yes_but_count": {
+                "type": "integer",
+                "description": "number of positive applications with comments",
+                "example": 2
+              },
+              "no_count": {
+                "type": "integer",
+                "description": "number of negative applications (cancellations)",
+                "example": 2
+              }
+            },
+            "required": [
+              "yes_count",
+              "no_count",
+              "yes_but_count",
+              "applications_pending",
+              "applications_received",
+              "requests_sent"
+            ]
+          }
+        }
+      },
+      "ApplicationInfo": {
+        "type": "object",
+        "properties": {
+          "response": {
+            "type": "string",
+            "enum": [
+              "YES",
+              "YES_BUT",
+              "NO"
+            ],
+            "description": "the HealthProfessional's reponse",
+            "example": "NO"
+          },
+          "message": {
+            "type": "string",
+            "description": "optional message (only if response is \"YES_BUT\" or \"NO\"; empty otherwise)",
+            "example": "I can, but the I don't want to ..."
+          },
+          "user_id": {
+            "type": "string",
+            "description": "internal id of POMA HealthProfessional",
+            "example": "4176f46e-b77d-4323-aa3a-60e6887ad282"
+          },
+          "pool_id": {
+            "type": "string",
+            "description": "id of TemporaryPool",
+            "example": "012462de-44a6-4071-98db-99741f7402fe"
+          },
+          "employee_id": {
+            "type": "string",
+            "description": "customer provided id of HealthProfessional",
+            "example": "15234"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "description": "creation timestamp",
+            "example": "2019-06-21T15:43:02Z"
+          },
+          "modified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "modification timestamp",
+            "example": "2019-06-21T15:43:02Z"
+          }
+        },
+        "required": [
+          "response",
+          "message",
+          "id",
+          "pool_id",
+          "employee_id",
+          "created",
+          "modified"
+        ]
+      },
+      "Application": {
+        "type": "object",
+        "description": "Response to an opportunity from health professional",
+        "properties": {
+          "response": {
+            "type": "string",
+            "enum": [
+              "YES",
+              "YES_BUT",
+              "NO"
+            ],
+            "description": "the HealthProfessionals reponse",
+            "example": "NO"
+          },
+          "message": {
+            "type": "string",
+            "description": "optional message (only if response is \"YES_BUT\" or \"NO\"; empty otherwise)",
+            "example": "I can, but I need to leave at 6 ..."
+          }
+        },
+        "required": [
+          "response"
+        ]
+      },
+      "ActiveParticipants": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Hi, Gabi got some virus and can't come to work today. Who could jump in?"
+          },
+          "active": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveParticipant"
+            }
+          }
+        },
+        "required": [
+          "active",
+          "message"
+        ],
+        "example": {
+          "active": [
+            {
+              "pool_id": "a5b5085c-22fc-462c-823e-deb5e70c8776",
+              "user_id": "5e6b107e-945e-4bd6-ac6f-e78f5ba77ddb"
+            },
+            {
+              "pool_id": "a5b5085c-22fc-462c-823e-deb5e70c8776",
+              "user_id": "ef04a442-c95e-4a90-8e18-293e8c1f8cf3"
+            },
+            {
+              "pool_id": "a5b5085c-22fc-462c-823e-deb5e70c8776",
+              "user_id": "9eec64f4-0e6a-4a70-ac38-512e5d8b41a1"
+            }
+          ]
+        }
+      },
+      "ActiveParticipant": {
+        "type": "object",
+        "properties": {
+          "pool_id": {
+            "type": "string",
+            "example": "a5b5085c-22fc-462c-823e-deb5e70c8776"
+          },
+          "user_id": {
+            "type": "string",
+            "example": "5e6b107e-945e-4bd6-ac6f-e78f5ba77ddb"
+          }
+        }
+      },
+      "SortDirection": {
+        "type": "string",
+        "enum": [
+          "ASC",
+          "DESC"
+        ]
+      },
+      "OpportunityExpand": {
+        "description": "one of APPLICATIONS, ACTIVE_PARTICIPANTS",
+        "type": "string",
+        "enum": [
+          "APPLICATIONS",
+          "ACTIVE_PARTICIPANTS"
+        ]
+      },
+      "SubmittedShiftTrades": {
+        "type": "object",
+        "required": [
+          "shift_trades"
+        ],
+        "properties": {
+          "shift_trades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubmittedShiftTrade"
+            }
+          }
+        }
+      },
+      "SubmittedShiftTrade": {
+        "type": "object",
+        "properties": {
+          "opportunity_id": {
+            "type": "string",
+            "description": "identifies an individual shift_trade",
+            "example": "f1bba5dc-27a4-48f3-bf5c-09768b339e36"
+          },
+          "partner_shift_1": {
+            "$ref": "#/components/schemas/PartnerShift"
+          },
+          "partner_shift_2": {
+            "$ref": "#/components/schemas/PartnerShift"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "partner_shift_1",
+          "partner_shift_2"
+        ]
+      },
+      "PartnerShift": {
+        "type": "object",
+        "description": "represents one partner shift in a shift trade",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "employee_id": {
+            "type": "string",
+            "example": "199b172c-ca02-4e50-98a4-e4c64621fc49"
+          },
+          "employment_id": {
+            "type": "string",
+            "example": "6542845"
+          },
+          "shift_position": {
+            "type": "string",
+            "enum": [
+              "LEFT",
+              "RIGHT",
+              "FULL",
+              "ON_CALL"
+            ],
+            "example": "RIGHT"
+          }
+        },
+        "required": [
+          "date",
+          "employee_id",
+          "employment_id",
+          "shift_position"
+        ]
+      },
+      "QueryAvailabilitiesRequest": {
+        "type": "object",
+        "description": "list of users that we would like to query the availabilities for",
+        "properties": {
+          "users": {
+            "description": "Subject-Ids",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "example": {
+          "users": [
+            "37cc93c5-92e6-4c9e-8714-0d42af760934",
+            "a9071463-af3f-485c-b275-6e378d9aa6bb"
+          ]
+        }
+      },
+      "QueryAvailabilitiesResponse": {
+        "type": "object",
+        "description": "availability data for requested users and days",
+        "properties": {
+          "users": {
+            "description": "availabilities for a single user",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAvailabilities"
+            }
+          }
+        }
+      },
+      "UserAvailability": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "shifts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftType"
+            }
+          }
+        }
+      },
+      "UserAvailabilities": {
+        "type": "object",
+        "description": "availability data for as user",
+        "properties": {
+          "subject_id": {
+            "type": "string"
+          },
+          "availabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAvailability"
+            }
+          }
+        },
+        "example": {
+          "subject_id": "37cc93c5-92e6-4c9e-8714-0d42af760934",
+          "availabilities": [
+            {
+              "date": "2021-05-10",
+              "shifts": [
+                "EARLY",
+                "LATE"
+              ]
+            },
+            {
+              "date": "2021-05-12",
+              "shifts": [
+                "NIGHT"
+              ]
+            },
+            {
+              "date": "2021-05-13",
+              "shifts": [
+                "EARLY",
+                "NORMAL",
+                "LATE",
+                "NIGHT"
+              ]
+            }
+          ]
+        }
+      },
+      "PomaAvailabilityRequest": {
+        "type": "object",
+        "description": "query from onPrem to fetch users availabilities",
+        "properties": {
+          "employee_ids": {
+            "description": "ids from employees",
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "from": {
+            "description": "start date to fetch availabilities, normally first day of a month",
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "description": "end date to fetch availabilities, normally last day of a month",
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "employee_ids",
+          "from",
+          "to"
+        ]
+      },
+      "PomaUserAvailabilities": {
+        "type": "object",
+        "description": "response object with all users availabilities for the requested employee ids and period of time",
+        "properties": {
+          "user_availabilities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PomaUserAvailability"
+            }
+          }
+        },
+        "required": [
+          "user_availabilities"
+        ]
+      },
+      "PomaUserAvailability": {
+        "type": "object",
+        "description": "response object with all users availabilities for the requested employee ids and period of time",
+        "properties": {
+          "employee_id": {
+            "description": "the employee id of the user",
+            "type": "string"
+          },
+          "tenant_subject": {
+            "description": "the tenant subject (keycloak id) of the user",
+            "type": "string"
+          },
+          "availabilities": {
+            "description": "map containing the id of the availability as key, and the date as value",
+            "type": "string",
+            "additionalProperties": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        },
+        "required": [
+          "employee_id",
+          "tenant_subject",
+          "availabilities"
+        ]
+      }
+    }
+  }
+}
